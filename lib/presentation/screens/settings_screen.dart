@@ -48,7 +48,7 @@ class SettingsScreen extends StatelessWidget {
             title: Text('Account'),
           ),
           ListTile(
-            title: const Text('Supabase Login'),
+            title: const Text('Firebase Login'),
             subtitle: const Text('Not connected'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
@@ -58,7 +58,7 @@ class SettingsScreen extends StatelessWidget {
           const Divider(),
           const ListTile(
             title: Text('About'),
-            subtitle: Text('Parakeet Notes v0.1.0'),
+            subtitle: Text('Note Taking AI v0.1.0'),
           ),
         ],
       ),

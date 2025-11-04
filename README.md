@@ -1,4 +1,4 @@
-# Parakeet Notes
+# Note Taking AI
 
 Local-first voice notes with on-device speech-to-text and optional AI summarization.
 
@@ -8,7 +8,7 @@ Local-first voice notes with on-device speech-to-text and optional AI summarizat
 - 🤖 Local STT using Parakeet via MLC.ai
 - 📝 Automatic transcription and tagging
 - 🔒 Privacy-first (local-only by default)
-- ☁️ Optional cloud sync via Supabase
+- ☁️ Optional cloud sync via Firebase
 - 🌙 Dark mode support
 - 📱 Cross-platform (Android & iOS)
 
@@ -18,12 +18,12 @@ Local-first voice notes with on-device speech-to-text and optional AI summarizat
 - **Database**: SQLite (Drift)
 - **STT**: Parakeet (MLC.ai runtime)
 - **Optional LLM**: phi-3-mini for summarization
-- **Backend**: Supabase (Auth, Postgres, Storage)
+- **Backend**: Firebase (Auth, Firestore, Storage)
 
 ## Project Structure
 
 ```
-parakeet_notes/
+note_taking_ai/
 ├── lib/
 │   ├── data/
 │   │   ├── database/        # Drift schema & DAOs
@@ -57,13 +57,16 @@ parakeet_notes/
 ```bash
 # Clone the repository
 git clone <repo-url>
-cd parakeet_notes
+cd note_taking_ai
 
 # Install dependencies
 flutter pub get
 
 # Generate Drift code
 dart run build_runner build --delete-conflicting-outputs
+
+# Setup Firebase (optional - only needed for cloud sync)
+flutterfire configure
 
 # Run on Android
 flutter run -d android
@@ -72,14 +75,24 @@ flutter run -d android
 flutter run -d ios
 ```
 
-### Environment Configuration
+### Firebase Setup (Optional)
 
-Copy `.env.example` to `.env` and configure (optional, only needed for cloud features):
+Only needed if you want cloud sync features:
 
+1. Install FlutterFire CLI:
 ```bash
-cp .env.example .env
-# Edit .env with your Supabase credentials
+dart pub global activate flutterfire_cli
 ```
+
+2. Configure Firebase for your project:
+```bash
+flutterfire configure
+```
+
+This will:
+- Create a Firebase project (or select existing)
+- Generate `firebase_options.dart`
+- Add config files for Android/iOS
 
 ## Development Status
 
@@ -99,7 +112,7 @@ This project is currently under active development. See Linear project for curre
 - MLC.ai FFI bridge for Parakeet
 - Recording → STT → save note flow
 - UI screens implementation
-- Supabase backend setup
+- Firebase backend setup
 
 ## License
 
