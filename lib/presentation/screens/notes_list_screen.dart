@@ -8,6 +8,10 @@ class NotesListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/capture'),
+        ),
         title: const Text('Notes'),
         actions: [
           IconButton(
