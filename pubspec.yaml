@@ -32,11 +32,11 @@ dependencies:
   audio_session: ^0.1.19
   flutter_sound: ^9.2.13
 
-  # Backend/Sync - Firebase
-  firebase_core: ^3.6.0
-  firebase_auth: ^5.3.1
-  cloud_firestore: ^5.4.4
-  firebase_storage: ^12.3.4
+  # Backend/Sync - Firebase (pinned to versions compatible with Xcode 14.3/Swift 5.8)
+  firebase_core: 2.32.0
+  firebase_auth: 4.20.0
+  cloud_firestore: 4.17.5
+  firebase_storage: 11.7.7
 
   # HTTP & Network
   dio: ^5.7.0
@@ -57,7 +57,7 @@ dev_dependencies:
   # Code Generation
   build_runner: ^2.4.10
   drift_dev: ^2.18.0
-  json_serializable: ^6.9.0
+  json_serializable: ^6.8.0
 
 flutter:
   uses-material-design: true
