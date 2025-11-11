@@ -26,11 +26,14 @@ dependencies:
   path: ^1.9.0
 
   # Permissions
-  permission_handler: ^11.3.1
+  permission_handler: ^10.4.5
 
   # Audio
   audio_session: ^0.1.19
   flutter_sound: ^9.2.13
+
+  # Speech-to-Text
+  vosk_flutter: ^0.3.48
 
   # Backend/Sync - Firebase (pinned to versions compatible with Xcode 14.3/Swift 5.8)
   firebase_core: 2.32.0
@@ -63,6 +66,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/models/parakeet/
+    - assets/models/vosk/vosk-model-small-en-us-0.15.zip
+    - assets/test_audio/
     - assets/prompts/
     - .env

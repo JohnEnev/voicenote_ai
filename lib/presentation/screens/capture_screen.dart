@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/audio_recorder_service.dart';
+import '../../services/stt_service.dart';
 
 class CaptureScreen extends StatefulWidget {
   const CaptureScreen({super.key});
@@ -11,9 +12,13 @@ class CaptureScreen extends StatefulWidget {
 
 class _CaptureScreenState extends State<CaptureScreen> {
   final AudioRecorderService _recorderService = AudioRecorderService();
+  final STTService _sttService = STTService();
   RecordingState _recordingState = RecordingState.uninitialized;
   Duration _recordingDuration = Duration.zero;
   String? _lastRecordingPath;
+  String _transcription = '';
+  String _partialTranscription = '';
+  STTProvider _currentSTTProvider = STTProvider.vosk;
 
   @override
   void initState() {
@@ -47,8 +52,31 @@ class _CaptureScreenState extends State<CaptureScreen> {
       }
     });
 
-    // Initialize
+    // Listen to STT transcription results (only for Vosk partial results)
+    // Whisper doesn't use this stream - it returns directly from processWavFile
+    _sttService.transcriptionStream.listen((result) {
+      if (mounted && _currentSTTProvider == STTProvider.vosk) {
+        setState(() {
+          if (result.isFinal) {
+            // Replace with final result (don't append)
+            _transcription = result.text;
+            _partialTranscription = '';
+          } else {
+            // Show partial result (only for Vosk)
+            _partialTranscription = result.text;
+          }
+        });
+      }
+    });
+
+    // Initialize services
     await _recorderService.initialize();
+
+    // Initialize STT service with default provider (Vosk)
+    final sttInitialized = await _sttService.initialize(provider: _currentSTTProvider);
+    if (!sttInitialized) {
+      _showMessage('Failed to initialize speech recognition');
+    }
   }
 
   void _showMessage(String message) {
@@ -59,22 +87,59 @@ class _CaptureScreenState extends State<CaptureScreen> {
     }
   }
 
+  Future<void> _switchSTTProvider() async {
+    // Toggle between providers
+    final newProvider = _currentSTTProvider == STTProvider.vosk
+        ? STTProvider.whisper
+        : STTProvider.vosk;
+
+    // Update UI immediately for better UX
+    setState(() {
+      _currentSTTProvider = newProvider;
+    });
+
+    // Switch provider in background
+    final success = await _sttService.switchProvider(newProvider);
+    if (!success) {
+      // Revert on failure
+      setState(() {
+        _currentSTTProvider = _currentSTTProvider == STTProvider.vosk
+            ? STTProvider.whisper
+            : STTProvider.vosk;
+      });
+      _showMessage('Failed to switch provider');
+    }
+  }
+
   Future<void> _toggleRecording() async {
     if (_recordingState == RecordingState.recording) {
       // Stop recording
       final path = await _recorderService.stopRecording();
+
       if (path != null) {
         setState(() {
           _lastRecordingPath = path;
         });
-        _showMessage('Recording saved to $path');
+
+        // Process the recorded file with active STT provider
+        final transcribedText = await _sttService.processWavFile(path);
+
+        if (transcribedText.isNotEmpty) {
+          setState(() {
+            _transcription = transcribedText;
+            _partialTranscription = '';
+          });
+        }
       }
     } else {
+      // Clear previous transcription
+      setState(() {
+        _transcription = '';
+        _partialTranscription = '';
+      });
+
       // Start recording
-      final path = await _recorderService.startRecording();
-      if (path != null) {
-        _showMessage('Recording started');
-      }
+      await _recorderService.startRecording();
     }
   }
 
@@ -141,6 +206,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
   @override
   void dispose() {
     _recorderService.dispose();
+    _sttService.dispose();
     super.dispose();
   }
 
@@ -224,17 +290,114 @@ class _CaptureScreenState extends State<CaptureScreen> {
               ),
             ),
 
+            const SizedBox(height: 24),
+
+            // STT Provider selector
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Speech Recognition:',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _sttService.getProviderDisplayName(_currentSTTProvider),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _sttService.getProviderDescription(_currentSTTProvider),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.swap_horiz),
+                        onPressed: _switchSTTProvider,
+                        tooltip: 'Switch provider',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Transcription display
+            if (_transcription.isNotEmpty || _partialTranscription.isNotEmpty) ...[
+              const SizedBox(height: 32),
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Transcription:',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _transcription.trim() +
+                          (_partialTranscription.isNotEmpty
+                              ? ' ${_partialTranscription}'
+                              : ''),
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: _partialTranscription.isNotEmpty
+                            ? Colors.grey
+                            : Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // Last recording info
             if (_lastRecordingPath != null) ...[
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
               const Text(
                 'Last recording:',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Text(
                 _lastRecordingPath!.split('/').last,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: const TextStyle(fontSize: 10, color: Colors.grey),
               ),
             ],
           ],
