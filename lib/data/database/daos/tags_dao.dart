@@ -21,7 +21,7 @@ class TagsDao extends DatabaseAccessor<AppDatabase> with _$TagsDaoMixin {
   }
 
   // Insert a new tag
-  Future<String> insertTag(TagsCompanion tag) async {
+  Future<int> insertTag(TagsCompanion tag) async {
     return await into(tags).insert(tag);
   }
 
@@ -32,8 +32,10 @@ class TagsDao extends DatabaseAccessor<AppDatabase> with _$TagsDaoMixin {
       return existing;
     }
 
-    final id = await insertTag(TagsCompanion.insert(name: name));
-    return Tag(id: id, name: name);
+    await insertTag(TagsCompanion.insert(name: name));
+    // Fetch the newly created tag
+    final newTag = await getTagByName(name);
+    return newTag!;
   }
 
   // Update a tag

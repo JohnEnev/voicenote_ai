@@ -34,9 +34,9 @@ class NotesDao extends DatabaseAccessor<AppDatabase> with _$NotesDaoMixin {
     return (select(notes)..where((t) => t.isPinned.equals(true))).get();
   }
 
-  // Search notes by text
+  // Search notes by content
   Future<List<Note>> searchNotes(String query) {
-    return (select(notes)..where((t) => t.text.like('%$query%'))).get();
+    return (select(notes)..where((t) => t.content.like('%$query%'))).get();
   }
 
   // Insert a new note

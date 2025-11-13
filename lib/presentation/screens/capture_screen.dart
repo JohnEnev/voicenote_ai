@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:drift/drift.dart' as drift;
 import '../../services/audio_recorder_service.dart';
 import '../../services/stt_service.dart';
+import '../../data/database/database.dart';
 
 class CaptureScreen extends StatefulWidget {
   const CaptureScreen({super.key});
@@ -13,6 +15,7 @@ class CaptureScreen extends StatefulWidget {
 class _CaptureScreenState extends State<CaptureScreen> {
   final AudioRecorderService _recorderService = AudioRecorderService();
   final STTService _sttService = STTService();
+  late final AppDatabase _database;
   RecordingState _recordingState = RecordingState.uninitialized;
   Duration _recordingDuration = Duration.zero;
   String? _lastRecordingPath;
@@ -23,6 +26,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
   @override
   void initState() {
     super.initState();
+    _database = AppDatabase();
     _initializeRecorder();
   }
 
@@ -111,6 +115,44 @@ class _CaptureScreenState extends State<CaptureScreen> {
     }
   }
 
+  Future<void> _saveNoteToDatabase(String transcription, String? audioPath) async {
+    try {
+      // Create note with transcription
+      final note = NotesCompanion.insert(
+        content: transcription,  // Changed from 'text' to 'content'
+        lang: const drift.Value('auto'),
+        source: const drift.Value('voice'),
+        durationMs: drift.Value(_recordingDuration.inMilliseconds),
+        deviceHint: drift.Value(_currentSTTProvider.name), // Store STT provider used
+      );
+
+      // Insert note and get the ID
+      await _database.notesDao.insertNote(note);
+      print('Note saved');
+
+      // If there's an audio file, save it as an attachment
+      if (audioPath != null && audioPath.isNotEmpty) {
+        // We need to get the note ID first - let's query for the most recent note
+        final notes = await _database.notesDao.getNotesOrderedByDate();
+        if (notes.isNotEmpty) {
+          final noteId = notes.first.id;
+          final attachment = AttachmentsCompanion.insert(
+            noteId: noteId,
+            path: audioPath,
+            mime: const drift.Value('audio/wav'),
+          );
+          await _database.into(_database.attachments).insert(attachment);
+          print('Audio attachment saved');
+        }
+      }
+
+      _showMessage('Note saved successfully');
+    } catch (e) {
+      print('Error saving note: $e');
+      _showMessage('Failed to save note');
+    }
+  }
+
   Future<void> _toggleRecording() async {
     if (_recordingState == RecordingState.recording) {
       // Stop recording
@@ -129,6 +171,9 @@ class _CaptureScreenState extends State<CaptureScreen> {
             _transcription = transcribedText;
             _partialTranscription = '';
           });
+
+          // Save note to database
+          await _saveNoteToDatabase(transcribedText, path);
         }
       }
     } else {
@@ -207,6 +252,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
   void dispose() {
     _recorderService.dispose();
     _sttService.dispose();
+    _database.close();
     super.dispose();
   }
 
