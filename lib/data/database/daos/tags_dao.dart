@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 import '../database.dart';
 
 part 'tags_dao.g.dart';
@@ -32,7 +33,8 @@ class TagsDao extends DatabaseAccessor<AppDatabase> with _$TagsDaoMixin {
       return existing;
     }
 
-    await insertTag(TagsCompanion.insert(name: name));
+    final tagId = const Uuid().v4();
+    await insertTag(TagsCompanion.insert(id: tagId, name: name));
     // Fetch the newly created tag
     final newTag = await getTagByName(name);
     return newTag!;

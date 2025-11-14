@@ -11,8 +11,8 @@ part 'database.g.dart';
 
 // Notes Table
 class Notes extends Table {
-  TextColumn get id => text().clientDefault(_uuid)();
-  DateTimeColumn get createdAt => dateTime().clientDefault(_now)();
+  TextColumn get id => text()();
+  DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
   TextColumn get content => text()();  // Renamed from 'text' to 'content' to avoid conflict
   TextColumn get lang => text().withDefault(const Constant('auto'))();
@@ -27,13 +27,9 @@ class Notes extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-// Helper functions for client defaults
-String _uuid() => const Uuid().v4();
-DateTime _now() => DateTime.now();
-
 // Tags Table
 class Tags extends Table {
-  TextColumn get id => text().clientDefault(_uuid)();
+  TextColumn get id => text()();
   TextColumn get name => text().unique()();
 
   @override
@@ -51,7 +47,7 @@ class NoteTags extends Table {
 
 // Attachments Table
 class Attachments extends Table {
-  TextColumn get id => text().clientDefault(_uuid)();
+  TextColumn get id => text()();
   TextColumn get noteId => text().references(Notes, #id, onDelete: KeyAction.cascade)();
   TextColumn get path => text()();
   TextColumn get mime => text()();

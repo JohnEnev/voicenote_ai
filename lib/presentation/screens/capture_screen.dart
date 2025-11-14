@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:uuid/uuid.dart';
 import '../../services/audio_recorder_service.dart';
 import '../../services/stt_service.dart';
 import '../../data/database/database.dart';
@@ -117,33 +118,35 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
   Future<void> _saveNoteToDatabase(String transcription, String? audioPath) async {
     try {
+      final noteId = const Uuid().v4();
+      final now = DateTime.now();
+
       // Create note with transcription
       final note = NotesCompanion.insert(
-        content: transcription,  // Changed from 'text' to 'content'
+        id: noteId,
+        createdAt: now,
+        content: transcription,
         lang: const drift.Value('auto'),
         source: const drift.Value('voice'),
         durationMs: drift.Value(_recordingDuration.inMilliseconds),
         deviceHint: drift.Value(_currentSTTProvider.name), // Store STT provider used
       );
 
-      // Insert note and get the ID
+      // Insert note
       await _database.notesDao.insertNote(note);
-      print('Note saved');
+      print('Note saved with ID: $noteId');
 
       // If there's an audio file, save it as an attachment
       if (audioPath != null && audioPath.isNotEmpty) {
-        // We need to get the note ID first - let's query for the most recent note
-        final notes = await _database.notesDao.getNotesOrderedByDate();
-        if (notes.isNotEmpty) {
-          final noteId = notes.first.id;
-          final attachment = AttachmentsCompanion.insert(
-            noteId: noteId,
-            path: audioPath,
-            mime: const drift.Value('audio/wav'),
-          );
-          await _database.into(_database.attachments).insert(attachment);
-          print('Audio attachment saved');
-        }
+        final attachmentId = const Uuid().v4();
+        final attachment = AttachmentsCompanion.insert(
+          id: attachmentId,
+          noteId: noteId,
+          path: audioPath,
+          mime: 'audio/wav',
+        );
+        await _database.into(_database.attachments).insert(attachment);
+        print('Audio attachment saved');
       }
 
       _showMessage('Note saved successfully');
